@@ -58,5 +58,5 @@ for epoch in range(num_epochs):
     print(f"Validation Accuracy: {val_acc:.4f}\n")
 
 os.makedirs("models", exist_ok=True)
-torch.save(model.state_dict(), "models/greek_letter_cnn.pth")
-print("Model saved to models/greek_letter_cnn.pth")
+torch.save(model.state_dict(), "models/greek_letter_cnn_v1.pth")
+print("Model saved to models/greek_letter_cnn_v1.pth")
