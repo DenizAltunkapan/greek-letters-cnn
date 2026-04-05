@@ -1,62 +1,90 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from dataset import get_dataloaders
-from model import GreekLetterCNN
+import matplotlib.pyplot as plt
 import os
 
-data_dir = "data"
-batch_size = 32
-learning_rate = 0.001
-num_epochs = 35
+from dataset import get_dataloaders
+from model import GreekLetterCNN
+from trainer import train_model
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-train_loader, val_loader, test_loader, classes = get_dataloaders(data_dir, batch_size)
+train_loader, val_loader, test_loader, classes = get_dataloaders("data", 32)
 num_classes = len(classes)
-print("Classes:", classes)
 
-model = GreekLetterCNN(num_classes=num_classes).to(device)
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+configs = [
+    {"channels": [32, 64]},
+    {"channels": [32, 64, 128]},
+    {"channels": [32, 64, 128, 256]},
+]
 
-for epoch in range(num_epochs):
-    model.train()
-    running_loss = 0.0
-    correct = 0
-    total = 0
+results = []
 
-    for images, labels in train_loader:
-        images, labels = images.to(device), labels.to(device)
-
-        optimizer.zero_grad()
-        outputs = model(images)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item() * images.size(0)
-        _, predicted = torch.max(outputs, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
-
-    epoch_loss = running_loss / total
-    epoch_acc = correct / total
-    print(f"Epoch [{epoch+1}/{num_epochs}] - Loss: {epoch_loss:.4f}, Accuracy: {epoch_acc:.4f}")
-
-    model.eval()
-    val_correct = 0
-    val_total = 0
-    with torch.no_grad():
-        for val_images, val_labels in val_loader:
-            val_images, val_labels = val_images.to(device), val_labels.to(device)
-            val_outputs = model(val_images)
-            _, val_predicted = torch.max(val_outputs, 1)
-            val_total += val_labels.size(0)
-            val_correct += (val_predicted == val_labels).sum().item()
-
-    val_acc = val_correct / val_total
-    print(f"Validation Accuracy: {val_acc:.4f}\n")
+best_model = None
+best_score = 0.0
+best_config = None
 
 os.makedirs("models", exist_ok=True)
-torch.save(model.state_dict(), "models/greek_letter_cnn_v1.pth")
-print("Model saved to models/greek_letter_cnn_v1.pth")
+os.makedirs("plots", exist_ok=True)
+
+for cfg in configs:
+    print("\nTesting config:", cfg)
+
+    model = GreekLetterCNN(
+        num_classes=num_classes,
+        channels=cfg["channels"]
+    ).to(device)
+
+    train_loss, val_acc = train_model(
+        model,
+        train_loader,
+        val_loader,
+        device,
+        epochs=20
+    )
+
+    results.append({
+        "config": cfg,
+        "train_loss": train_loss,
+        "val_acc": val_acc
+    })
+
+    # stability-based score (mean of last 4 epochs)
+    window = 4
+    stability_score = sum(val_acc[-window:]) / window
+
+    if stability_score > best_score:
+        best_score = stability_score
+        best_model = model.state_dict()
+        best_config = cfg
+
+# plot validation accuracy
+plt.figure()
+
+for r in results:
+    plt.plot(r["val_acc"], label=str(r["config"]["channels"]))
+
+plt.xlabel("Epoch")
+plt.ylabel("Validation Accuracy")
+plt.title("Architecture Comparison")
+plt.legend()
+
+plot_path = "plots/architecture_comparison.png"
+plt.savefig(plot_path)
+print(f"Plot saved to {plot_path}")
+
+plt.show()
+
+
+# save best model
+model_path = "models/best_model.pth"
+torch.save({
+    "model_state": best_model,
+    "config": best_config,
+    "stability_score": best_score,
+    "classes": classes
+}, model_path)
+
+print("\nBest architecture:", best_config)
+print("Best stability score:", best_score)
+print(f"Best model saved to {model_path}")
