@@ -3,8 +3,10 @@ import torch.nn as nn
 
 
 class GreekLetterCNN(nn.Module):
-    def __init__(self, num_classes, channels=[32, 64], hidden_size=128, dropout=0.3):
+    def __init__(self, num_classes, channels=None, hidden_size=128, dropout=0.3):
         super().__init__()
+        if channels is None:
+            channels = [32, 64]
 
         layers = []
         in_channels = 1
