@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Greek Letters ML</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%230f766e'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-size='42' font-family='Times New Roman, serif' fill='white'%3E%CE%B1%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="hero container">
+      <div class="hero-copy">
+        <p class="eyebrow">Greek Letters ML</p>
+        <h1>Convolutional Neural Networks for Handwritten Greek Letters</h1>
+        <p>
+          This project trains CNNs to classify handwritten small Greek letters and compares
+          architectures by validation performance across multiple seeds.
+        </p>
+        <div class="inline-greek">
+          <div class="greek-table-wrap">
+            <table class="greek-table" id="smallGreekTable">
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th>Name</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="hero-panel">
+        <h2>Current Best Model</h2>
+        <div id="modelInfo" class="muted">Loading model metadata...</div>
+      </div>
+    </header>
+
+    <main class="container grid">
+      <section class="panel explain">
+        <h2>How CNNs Work Here</h2>
+        <p>
+          Think of the CNN as a smart pattern reader for handwriting. It looks at tiny local parts
+          of the image first (small line segments and curves), then combines them step by step into
+          larger patterns that represent full Greek letters.
+        </p>
+        <p>
+          Convolution layers are the pattern detectors. They use many small
+          <strong>filters</strong> (also called kernels) that slide over the image and react to
+          specific patterns like edges, corners, and curved strokes. In this project, these filters
+          are <strong>3×3</strong>, so each detector looks at a tiny local neighborhood and then the
+          network stacks many such detectors to understand larger structures.
+        </p>
+        <p>
+          Pooling layers summarize nearby activations and make the model more robust to small shifts
+          in position. In ML terms this is called <strong>translation invariance</strong>: the model
+          can still recognize a letter even if it is drawn a bit left/right/up/down.
+        </p>
+        <p>
+          The final classifier converts these learned features into probabilities for the 24 small
+          Greek letters. We test multiple architectures because there is no universal best model:
+          smaller models are faster and need fewer resources, larger models can learn more complex
+          details but may overfit. Comparing them helps find the best accuracy/stability tradeoff
+          for this specific dataset.
+        </p>
+
+        <div class="concepts">
+          <article>
+            <h3>Convolution Layers</h3>
+            <p>Scan small image regions to detect edges, curves, and stroke fragments.</p>
+          </article>
+          <article>
+            <h3>Pooling Layers</h3>
+            <p>Condense nearby pixels and add translation invariance, so tiny shifts matter less.</p>
+          </article>
+          <article>
+            <h3>Dropout + Weight Decay</h3>
+            <p>Regularize the model to reduce overfitting and improve robustness on unseen writing.</p>
+          </article>
+          <article>
+            <h3>Small vs. Large Models</h3>
+            <p>Small models are efficient; larger models can capture more detail. We benchmark both.</p>
+          </article>
+          <article>
+            <h3>Why Compare Architectures</h3>
+            <p>The best setup depends on your data, not theory alone. We rank candidates by validation performance.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel comparison">
+        <div class="section-head">
+          <h2>Architecture Comparison</h2>
+          <button id="refreshPlot" class="btn secondary">Refresh</button>
+        </div>
+        <p class="muted">This plot is loaded from backend artifacts and updates after retraining.</p>
+        <img id="archPlot" alt="Architecture comparison" class="plot" />
+      </section>
+
+      <section class="card predictor">
+        <h2>Try It Yourself</h2>
+        <p class="muted">Draw a small Greek letter and run model inference.</p>
+
+        <div class="canvas-wrap">
+          <canvas id="drawCanvas" width="320" height="320"></canvas>
+        </div>
+
+        <div class="controls">
+          <button id="clearCanvas" class="btn secondary">Clear</button>
+          <button id="predictBtn" class="btn primary">Predict</button>
+        </div>
+
+        <div id="predictionResult" class="result muted">No prediction yet.</div>
+        <ul id="topPredictions" class="top-list"></ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <span class="author">Deniz Altunkapan</span>
+        <nav class="footer-links">
+          <a
+            href="https://github.com/DenizAltunkapan"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub profile"
+            title="GitHub"
+            class="github-link"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M12 .297a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.04c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.1-.75.08-.74.08-.74 1.2.09 1.84 1.24 1.84 1.24 1.07 1.84 2.8 1.31 3.49 1 .11-.77.42-1.3.76-1.6-2.67-.31-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.31-.54-1.56.12-3.24 0 0 1-.32 3.3 1.23a11.45 11.45 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.68.25 2.93.12 3.24.77.84 1.24 1.91 1.24 3.22 0 4.6-2.8 5.61-5.48 5.92.43.37.82 1.1.82 2.22v3.3c0 .32.21.7.82.58A12 12 0 0 0 12 .297"
+              />
+            </svg>
+          </a>
+          <a
+            href="https://deniz-dev.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Personal website"
+            title="deniz-dev.com"
+            class="web-link"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm6.9 9h-3.1a16 16 0 0 0-1.2-5.1A8 8 0 0 1 18.9 11ZM12 4.1c.9 1.2 1.8 3.5 2.1 6.9H9.9C10.2 7.6 11.1 5.3 12 4.1ZM9.4 5.9A16 16 0 0 0 8.2 11H5.1a8 8 0 0 1 4.3-5.1ZM5.1 13h3.1a16 16 0 0 0 1.2 5.1A8 8 0 0 1 5.1 13Zm6.9 6.9c-.9-1.2-1.8-3.5-2.1-6.9h4.2c-.3 3.4-1.2 5.7-2.1 6.9Zm2.6-1.8a16 16 0 0 0 1.2-5.1h3.1a8 8 0 0 1-4.3 5.1Z"
+              />
+            </svg>
+          </a>
+        </nav>
+      </div>
+    </footer>
+
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"
+    ></script>
+    <script defer src="/static/app.js"></script>
+  </body>
+</html>

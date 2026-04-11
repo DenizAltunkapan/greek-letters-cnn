@@ -122,3 +122,17 @@ Run evaluation and prediction with the same config:
 python test.py --config /path/to/config.yml
 python predict.py /path/to/image.png --config /path/to/config.yml
 ```
+
+## Web App
+
+The repository includes a frontend and a FastAPI backend for interactive prediction.
+
+Run from repository root:
+
+```bash
+uvicorn backend.main:app --reload
+```
+
+Then open:
+- [http://127.0.0.1:8000](http://127.0.0.1:8000) for the frontend
+- [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for API docs
