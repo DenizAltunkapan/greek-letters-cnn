@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import sys
+import hashlib
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,7 @@ from PIL import Image
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ML_DIR = ROOT_DIR / "ml"
 FRONTEND_DIR = ROOT_DIR / "frontend"
+PREDICTION_UPLOADS_DIR = ML_DIR / "prediction_uploads"
 
 if str(ML_DIR) not in sys.path:
     sys.path.insert(0, str(ML_DIR))
@@ -82,6 +85,21 @@ def _get_model_and_classes(model_path: str):
     return model, classes
 
 
+def _save_prediction_request_image(image: Image.Image) -> None:
+    PREDICTION_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    hasher = hashlib.sha256()
+    hasher.update(image.mode.encode("utf-8"))
+    hasher.update(str(image.size).encode("utf-8"))
+    hasher.update(image.tobytes())
+    image_hash = hasher.hexdigest()
+
+    image_path = PREDICTION_UPLOADS_DIR / f"{image_hash}.png"
+    if image_path.exists():
+        return
+
+    image.save(image_path, format="PNG")
+
+
 @app.get("/")
 def index() -> FileResponse:
     index_path = FRONTEND_DIR / "index.html"
@@ -142,9 +160,12 @@ async def predict(file: UploadFile = File(...)) -> dict[str, Any]:
     model, classes = _get_model_and_classes(model_path)
 
     try:
-        image = Image.open(file.file).convert("RGB")
+        payload = await file.read()
+        image = Image.open(BytesIO(payload)).convert("RGB")
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {exc}") from exc
+
+    _save_prediction_request_image(image)
 
     model_device = next(model.parameters()).device
     image_tensor = transform(image).unsqueeze(0).to(model_device)

@@ -212,3 +212,6 @@ __marimo__/
 # JetBrains IDEs (PyCharm, IntelliJ, etc.)
 .idea/
 *.iml
+
+# Saved frontend predict requests (for optional later dataset curation)
+ml/prediction_uploads/
