@@ -10,7 +10,13 @@ import torch
 from config_utils import default_config_path, load_config, resolve_ml_path
 from dataset import get_dataloaders
 from model import GreekLetterCNN
-from trainer import train_model
+from trainer import (
+    compute_confusion,
+    format_per_class_report,
+    per_class_metrics,
+    top_confusions,
+    train_model,
+)
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -229,6 +235,22 @@ def main():
     print(f"Latest plot also saved to {stable_plot_path}")
     print(f"Best model saved to {timestamped_model_path}")
     print(f"Latest model also saved to {stable_model_path}")
+
+    best_model = GreekLetterCNN(
+        num_classes=num_classes,
+        channels=best_config["channels"],
+        hidden_size=best_config["hidden_size"],
+        dropout=best_config["dropout"],
+    ).to(device)
+    best_model.load_state_dict(best_config_state)
+
+    val_confusion = compute_confusion(best_model, val_loader, num_classes, device)
+    val_rows = per_class_metrics(val_confusion, classes)
+    print()
+    print(format_per_class_report(val_rows, title="Per-class validation performance (best model, worst first)"))
+    print("\nMost frequent validation confusions (true -> predicted):")
+    for true_class, pred_class, count in top_confusions(val_confusion, classes, top_k=10):
+        print(f"  {true_class:<10} -> {pred_class:<10} {count}")
 
 
 if __name__ == "__main__":

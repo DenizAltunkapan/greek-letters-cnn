@@ -1,9 +1,62 @@
 import argparse
+import csv
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 
 from config_utils import default_config_path, load_config, resolve_ml_path
 from dataset import get_dataloaders
 from model import GreekLetterCNN
+from trainer import (
+    compute_confusion,
+    format_per_class_report,
+    per_class_metrics,
+    top_confusions,
+)
+
+
+def ensure_parent_dir(file_path):
+    parent = os.path.dirname(file_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+
+
+def save_per_class_csv(rows, csv_path):
+    ensure_parent_dir(csv_path)
+    ordered = sorted(rows, key=lambda r: (r["recall"], r["f1"]))
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=["class", "support", "correct", "recall", "precision", "f1"]
+        )
+        writer.writeheader()
+        for r in ordered:
+            writer.writerow(r)
+
+
+def save_confusion_plot(confusion, classes, plot_path):
+    ensure_parent_dir(plot_path)
+    matrix = confusion.cpu().numpy()
+    row_sums = matrix.sum(axis=1, keepdims=True)
+    normalised = np.zeros_like(matrix, dtype=float)
+    np.divide(matrix, row_sums, out=normalised, where=row_sums != 0)
+
+    fig, ax = plt.subplots(figsize=(11, 9))
+    image = ax.imshow(normalised, cmap="viridis", vmin=0.0, vmax=1.0)
+    fig.colorbar(image, ax=ax, label="Fraction of true class")
+
+    ax.set_xticks(range(len(classes)))
+    ax.set_yticks(range(len(classes)))
+    ax.set_xticklabels(classes, rotation=90, fontsize=7)
+    ax.set_yticklabels(classes, fontsize=7)
+    ax.set_xlabel("Predicted")
+    ax.set_ylabel("True")
+    ax.set_title("Test confusion matrix (row-normalised)")
+
+    fig.tight_layout()
+    fig.savefig(plot_path, dpi=150)
+    plt.close(fig)
 
 
 def main():
@@ -45,25 +98,45 @@ def main():
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
 
-    _, _, test_loader, _ = get_dataloaders(data_dir, batch_size)
+    _, _, test_loader, test_classes = get_dataloaders(data_dir, batch_size)
 
-    correct = 0
-    total = 0
+    if list(test_classes) != list(classes):
+        raise ValueError(
+            "Class order mismatch between checkpoint and test set.\n"
+            f"  checkpoint: {classes}\n"
+            f"  test set:   {test_classes}"
+        )
 
-    with torch.no_grad():
-        for images, labels in test_loader:
-            images, labels = images.to(device), labels.to(device)
+    confusion = compute_confusion(model, test_loader, num_classes, device)
 
-            outputs = model(images)
-            _, predicted = torch.max(outputs, 1)
+    total = int(confusion.sum().item())
+    correct = int(confusion.diag().sum().item())
+    test_acc = correct / total if total else 0.0
 
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+    rows = per_class_metrics(confusion, classes)
 
-    test_acc = correct / total
     print(f"Config file: {selected_config_path}")
     print(f"Model path: {model_path}")
-    print(f"Test Accuracy: {test_acc:.4f}")
+    print(f"Test Accuracy: {test_acc:.4f}  ({correct}/{total})")
+    print()
+    print(format_per_class_report(rows, title="Per-class test performance (worst first)"))
+
+    print("\nMost frequent confusions (true -> predicted):")
+    for true_class, pred_class, count in top_confusions(confusion, classes, top_k=10):
+        print(f"  {true_class:<10} -> {pred_class:<10} {count}")
+
+    csv_path = resolve_ml_path("plots/test_per_class_report.csv")
+    plot_path = resolve_ml_path("plots/test_confusion_matrix.png")
+    save_per_class_csv(rows, csv_path)
+    save_confusion_plot(confusion, classes, plot_path)
+
+    print(f"\nPer-class report saved to {csv_path}")
+    print(f"Confusion matrix saved to {plot_path}")
+
+    weakest = sorted(rows, key=lambda r: r["recall"])[:5]
+    print("\nFocus suggestion - letters with the lowest recall (add/clean data here):")
+    for r in weakest:
+        print(f"  {r['class']:<10} recall={r['recall']:.3f}  (correct {r['correct']}/{r['support']})")
 
 
 if __name__ == "__main__":
