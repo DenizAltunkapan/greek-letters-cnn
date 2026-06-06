@@ -1,4 +1,4 @@
-# Greek Letters ML
+# Greek Letters CNN
 
 This project trains and evaluates a convolutional neural network to classify handwritten Greek letters from image datasets.  
 It focuses on repeatable training and architecture comparison so model changes can be measured consistently over time.
