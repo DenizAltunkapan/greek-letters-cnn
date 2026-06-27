@@ -26,7 +26,7 @@ from config_utils import default_config_path, load_config, resolve_ml_path  # no
 from predict import load_model_and_classes, transform  # noqa: E402
 
 
-app = FastAPI(title="Greek Letters ML API", version="1.0.0")
+app = FastAPI(title="Greek Letters CNN API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

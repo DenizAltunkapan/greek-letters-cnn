@@ -3,7 +3,18 @@
 This project trains and evaluates a convolutional neural network to classify handwritten Greek letters from image datasets.  
 It focuses on repeatable training and architecture comparison so model changes can be measured consistently over time.
 
+[Live demo: greek.denizlabs.de](https://greek.denizlabs.de)
+
+![Greek letter training samples](assets/dataset-sample-grid.png)
+
 For a quick repository map, see [DIRECTORY.md](DIRECTORY.md).
+
+## Overview
+
+- 24 handwritten Greek letter classes
+- Config-driven training, evaluation, and prediction
+- Architecture comparison with timestamped model and plot outputs
+- FastAPI backend with a browser-based drawing interface for live inference
 
 ## Training Setup
 
@@ -126,6 +137,10 @@ python predict.py /path/to/image.png --config /path/to/config.yml
 ## Web App
 
 The repository includes a frontend and a FastAPI backend for interactive prediction.
+
+[Open the live demo](https://greek.denizlabs.de)
+
+![Web app prediction example](assets/web-app-prediction.png)
 
 Run from repository root:
 
